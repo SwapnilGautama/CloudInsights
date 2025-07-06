@@ -34,6 +34,11 @@ Generate a Python pandas code snippet that filters and analyzes the dataset to p
 2. Breakup of revenue by Type (Fixed_Position vs Project)
 3. Breakup of cost between Onshore and Offshore
 
+Return the result as:
+- result → filtered dataframe
+- summary1 → revenue grouped by Type
+- summary2 → cost split by Onshore and Offshore
+
 Just return the pandas code, no explanation.
 Assume the dataframe is named df.
     """
