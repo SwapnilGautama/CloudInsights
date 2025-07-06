@@ -67,9 +67,13 @@ if user_query:
         code = ask_gpt(user_query, df.head(3))
         st.code(code, language='python')
 
-        # 👇 Execute GPT-generated code safely
+                # 👇 Execute GPT-generated code safely
         local_vars = {'df': df.copy()}
-        exec(code, {}, local_vars)
+
+        # ✨ Strip markdown code block markers before exec
+        clean_code = code.strip().strip("`").replace("python", "").strip()
+
+        exec(clean_code, {}, local_vars)
 
         # 🎯 Expecting: result, summary1, summary2
         if 'result' in local_vars:
