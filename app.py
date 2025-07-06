@@ -18,6 +18,10 @@ def load_data():
     return df
 
 # 🧠 GPT-powered query interpreter
+from openai import OpenAI
+
+client = OpenAI(api_key=openai.api_key)
+
 def ask_gpt(user_query, df_sample):
     prompt = f"""
 You are a data analyst. Given a dataset with these columns:
@@ -32,13 +36,15 @@ Generate a Python pandas code snippet that filters and analyzes the dataset to p
 
 Just return the pandas code, no explanation.
 Assume the dataframe is named df.
-"""
-    response = openai.ChatCompletion.create(
+    """
+
+    response = client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}],
         temperature=0
     )
-    return response['choices'][0]['message']['content']
+
+    return response.choices[0].message.content
 
 # 📊 Plot helpers
 def plot_bar(data, title, ylabel):
