@@ -32,11 +32,12 @@ Generate a Python pandas code snippet that:
 1. Calculates revenue and cost for the entire dataset (no filtering).
 2. Breaks down revenue by Type (Fixed_Position vs Project).
 3. Breaks down cost by Location (Onshore vs Offshore).
-4. Returns result → full dataframe, summary1 → revenue by Type, summary2 → cost by Location.
+4. Creates a new column 'Location' where Location = 'Onshore' if Resources_Onshore > 0 else 'Offshore'.
+5. Assign the full dataset to a variable named 'result' (must be a DataFrame, not a tuple).
 
 Assume the dataframe is named df.
 Return only the Python code (no explanation).
-        """
+"""
     else:
         prompt = f"""
 You are a data analyst. Given a dataset with these columns:
@@ -45,15 +46,16 @@ You are a data analyst. Given a dataset with these columns:
 The user asked: "{user_query}"
 
 Generate a Python pandas code snippet that:
-1. Filters the data by the mentioned client (case-insensitive).
+1. Filters the data by the mentioned client (case-insensitive using .str.lower()).
 2. Calculates revenue and cost for that client.
 3. Breaks down revenue by Type (Fixed_Position vs Project).
 4. Breaks down cost by Location (Onshore vs Offshore).
-5. Returns result → filtered dataframe, summary1 → revenue by Type, summary2 → cost by Location.
+5. Creates a new column 'Location' where Location = 'Onshore' if Resources_Onshore > 0 else 'Offshore'.
+6. Assign the filtered dataframe to a variable named 'result' (must be a DataFrame, not a tuple).
 
-Use .str.lower() for filtering. Assume the dataframe is named df.
+Assume the dataframe is named df.
 Return only the Python code (no explanation).
-        """
+"""
 
     response = openai.chat.completions.create(
         model="gpt-4",
@@ -92,13 +94,11 @@ if user_query:
         # 👇 Execute GPT-generated code safely
         local_vars = {'df': df.copy()}
         clean_code = code.strip().strip("`").replace("python", "").strip()
-        st.code(clean_code, language="python")  # Show GPT-generated code
         exec(clean_code, {"np": np, "pd": pd}, local_vars)
 
-        result_df = local_vars.get('result')
-        if result_df is None or not isinstance(result_df, pd.DataFrame) or result_df.empty:
-            st.warning("No data returned. The filter might have excluded all rows or GPT output was invalid.")
-        else:
+        if 'result' in local_vars:
+            result_df = local_vars['result']
+
             # ✅ Aggregation block
             if "Type" in result_df.columns:
                 agg = result_df.groupby("Type").agg({
