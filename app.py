@@ -3,19 +3,19 @@ import pandas as pd
 import openai
 import matplotlib.pyplot as plt
 
-# 🔑 OpenAI API
+# 🔑 Set OpenAI API Key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
-# 📄 Load dataset
+# 📄 Load CSV from GitHub
 CSV_URL = "https://raw.githubusercontent.com/SwapnilGautama/CloudInsights/main/SoftwareCompany_2025_Data.csv"
 
 @st.cache_data
 def load_data():
     df = pd.read_csv(CSV_URL)
-    df['Month'] = pd.to_datetime(df['Month'])
+    df["Month"] = pd.to_datetime(df["Month"])
     return df
 
-# 📊 Plotting helper
+# 📊 Plot dual-axis chart
 def plot_dual_axis_bar(agg):
     fig, ax1 = plt.subplots(figsize=(6, 4))
     ax2 = ax1.twinx()
@@ -28,7 +28,7 @@ def plot_dual_axis_bar(agg):
     ax2.legend(loc="upper right")
     st.pyplot(fig)
 
-# 🧠 GPT helper
+# 🧠 GPT Query Generator
 def ask_gpt(user_query, df_sample):
     prompt = f"""
 You are a data analyst. The user wants revenue and cost insights from this dataset:
@@ -41,10 +41,9 @@ Return Python pandas code that:
 2. Returns three variables:
    - result: filtered rows
    - summary1: revenue by Type
-   - summary2: cost split by Onshore/Offshore
+   - summary2: cost split by Location (Onshore/Offshore)
 
-Don't explain. Return only the Python code.
-DataFrame name is df.
+Return only the code. DataFrame name is df.
 """
     response = openai.chat.completions.create(
         model="gpt-4",
@@ -53,7 +52,7 @@ DataFrame name is df.
     )
     return response.choices[0].message.content
 
-# 🚀 Streamlit App
+# 🚀 Streamlit UI
 st.set_page_config(page_title="Cloud Insights Chatbot", page_icon="💬", layout="wide")
 st.title("💬 Cloud Insights Chatbot")
 
@@ -72,12 +71,15 @@ if user_query:
         st.markdown("Generating insights...")
 
         if any(word in lowered for word in ["total", "overall", "aggregate"]):
-            # ✅ Handle total directly without GPT
             result = df.copy()
             summary1 = result.groupby("Type", dropna=False)["Revenue"].sum().reset_index()
-            summary2 = result.groupby("Location", dropna=False)["Cost"].sum().reset_index()
+
+            if "Location" in result.columns:
+                summary2 = result.groupby("Location", dropna=False)["Cost"].sum().reset_index()
+            else:
+                summary2 = pd.DataFrame(columns=["Location", "Cost"])
+
         else:
-            # 🧠 GPT handles client-specific filtering
             code = ask_gpt(user_query, df.head(3))
             local_vars = {"df": df.copy()}
             exec(code.strip().strip("`").replace("python", ""), {}, local_vars)
@@ -85,9 +87,11 @@ if user_query:
             summary1 = local_vars["summary1"]
             summary2 = local_vars["summary2"]
 
-        # Ensure missing fields are filled
-        if 'Resources_Total' not in result.columns:
-            result['Resources_Total'] = 0
+        # Ensure columns exist
+        if "Resources_Total" not in result.columns:
+            result["Resources_Total"] = 0
+        if "Type" not in result.columns:
+            result["Type"] = "Unknown"
 
         agg = result.groupby("Type", dropna=False).agg({
             "Revenue": "sum",
@@ -99,13 +103,13 @@ if user_query:
         agg["Cost ($M)"] = (agg["Cost"] / 1_000_000).round(2)
         agg.rename(columns={"Resources_Total": "Total Resources"}, inplace=True)
 
-        # 📌 Total Summary
+        # 🔢 Summary Block
         st.subheader("📌 Total Summary")
         st.markdown(f"- **Total Revenue:** ${result['Revenue'].sum() / 1_000_000:.2f}M")
         st.markdown(f"- **Total Cost:** ${result['Cost'].sum() / 1_000_000:.2f}M")
         st.markdown(f"- **Total Resources:** {int(result['Resources_Total'].sum())}")
 
-        # 📊 Aggregated by Type
+        # 📊 Type Summary
         st.subheader("📊 Summary by Type (Aggregated)")
         col1, col2 = st.columns([1.1, 1])
         with col1:
@@ -114,7 +118,7 @@ if user_query:
         with col2:
             plot_dual_axis_bar(agg)
 
-        # 📋 Raw Detail
+        # 📋 Raw Table
         st.subheader("📋 Project-wise and Fixed Position Data")
         st.dataframe(result, use_container_width=True, height=400)
 
