@@ -106,6 +106,10 @@ if user_query:
         if 'result' in local_vars:
             result_df = local_vars['result']
 
+            # ✅ If result is a Series (e.g., total sum), convert to 1-row DataFrame
+            if isinstance(result_df, pd.Series):
+                result_df = result_df.to_frame().T
+
             if 'Type' in result_df.columns:
                 agg = result_df.groupby("Type").agg({
                     "Revenue": "sum",
@@ -145,10 +149,11 @@ if user_query:
                     st.pyplot(fig)
 
             else:
+                # 🧮 Fallback for simple total (Series turned DataFrame)
                 st.subheader("📌 Total Summary")
-                total_rev = result_df["Revenue"].sum() / 1_000_000
-                total_cost = result_df["Cost"].sum() / 1_000_000
-                total_res = result_df["Resources_Total"].sum()
+                total_rev = result_df["Revenue"].values[0] / 1_000_000
+                total_cost = result_df["Cost"].values[0] / 1_000_000
+                total_res = result_df["Resources_Total"].values[0]
 
                 st.markdown(f"- **Total Revenue:** ${total_rev:.2f}M")
                 st.markdown(f"- **Total Cost:** ${total_cost:.2f}M")
