@@ -6,7 +6,7 @@ import io
 import requests
 
 # 🔑 Set your OpenAI API key
-openai.api_key = st.secrets["OPENAI_API_KEY"]  # or replace with your key directly
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # 📄 GitHub raw CSV URL
 CSV_URL = "https://raw.githubusercontent.com/SwapnilGautama/CloudInsights/main/SoftwareCompany_2025_Data.csv"
@@ -34,7 +34,7 @@ Generate a Python pandas code snippet that analyzes the dataset **without filter
 3. Breakup of cost between Onshore and Offshore
 
 Return the result as:
-- result → full dataframe
+- result → full dataframe or summarized view
 - summary1 → revenue grouped by Type
 - summary2 → cost split by Onshore and Offshore
 
@@ -106,7 +106,7 @@ if user_query:
         if 'result' in local_vars:
             result_df = local_vars['result']
 
-            # ✅ If result is a Series (e.g., total sum), convert to 1-row DataFrame
+            # ✅ If result is a Series (e.g., total sum), convert to DataFrame
             if isinstance(result_df, pd.Series):
                 result_df = result_df.to_frame().T
 
@@ -149,17 +149,18 @@ if user_query:
                     st.pyplot(fig)
 
             else:
-                # 🧮 Fallback for simple total (Series turned DataFrame)
+                # 🧮 Fallback total if no 'Type' column
                 st.subheader("📌 Total Summary")
-                total_rev = result_df["Revenue"].values[0] / 1_000_000
-                total_cost = result_df["Cost"].values[0] / 1_000_000
-                total_res = result_df["Resources_Total"].values[0]
+
+                total_rev = result_df.get("Revenue", [0])[0] / 1_000_000
+                total_cost = result_df.get("Cost", [0])[0] / 1_000_000
+                total_res = result_df.get("Resources_Total", [0])[0]
 
                 st.markdown(f"- **Total Revenue:** ${total_rev:.2f}M")
                 st.markdown(f"- **Total Cost:** ${total_cost:.2f}M")
                 st.markdown(f"- **Total Resources:** {int(total_res)}")
 
-            # 📋 Full project + fixed data at bottom
+            # 📋 Project-wise data at bottom
             st.subheader("📋 Project-wise and Fixed Position Data")
             st.dataframe(result_df, use_container_width=True, height=400)
 
