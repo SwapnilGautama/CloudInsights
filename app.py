@@ -18,10 +18,6 @@ def load_data():
     return df
 
 # 🧠 GPT-powered query interpreter
-from openai import OpenAI
-
-client = OpenAI(api_key=openai.api_key)
-
 def ask_gpt(user_query, df_sample):
     prompt = f"""
 You are a data analyst. Given a dataset with these columns:
@@ -39,11 +35,11 @@ Return the result as:
 - summary1 → revenue grouped by Type
 - summary2 → cost split by Onshore and Offshore
 
-Just return the pandas code, no explanation.
+Just return the Python pandas code, no explanation.
 Assume the dataframe is named df.
     """
 
-    response = client.chat.completions.create(
+    response = openai.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}],
         temperature=0
