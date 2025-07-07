@@ -32,12 +32,11 @@ Generate a Python pandas code snippet that:
 1. Calculates revenue and cost for the entire dataset (no filtering).
 2. Breaks down revenue by Type (Fixed_Position vs Project).
 3. Breaks down cost by Location (Onshore vs Offshore).
-4. Creates a new column 'Location' where Location = 'Onshore' if Resources_Onshore > 0 else 'Offshore'.
-5. Assign the full dataset to a variable named 'result' (must be a DataFrame, not a tuple).
+4. Returns result → full dataframe, summary1 → revenue by Type, summary2 → cost by Location.
 
 Assume the dataframe is named df.
 Return only the Python code (no explanation).
-"""
+        """
     else:
         prompt = f"""
 You are a data analyst. Given a dataset with these columns:
@@ -46,16 +45,15 @@ You are a data analyst. Given a dataset with these columns:
 The user asked: "{user_query}"
 
 Generate a Python pandas code snippet that:
-1. Filters the data by the mentioned client (case-insensitive using .str.lower()).
+1. Filters the data by the mentioned client (case-insensitive).
 2. Calculates revenue and cost for that client.
 3. Breaks down revenue by Type (Fixed_Position vs Project).
 4. Breaks down cost by Location (Onshore vs Offshore).
-5. Creates a new column 'Location' where Location = 'Onshore' if Resources_Onshore > 0 else 'Offshore'.
-6. Assign the filtered dataframe to a variable named 'result' (must be a DataFrame, not a tuple).
+5. Returns result → filtered dataframe, summary1 → revenue by Type, summary2 → cost by Location.
 
-Assume the dataframe is named df.
+Use .str.lower() for filtering. Assume the dataframe is named df.
 Return only the Python code (no explanation).
-"""
+        """
 
     response = openai.chat.completions.create(
         model="gpt-4",
@@ -89,18 +87,16 @@ user_query = st.text_input("Ask a question like:", "Show revenue and cost breakd
 if user_query:
     try:
         st.markdown("Generating insights...")
-code = ask_gpt(user_query, df.head(3))
-local_vars = {'df': df.copy()}
+        code = ask_gpt(user_query, df.head(3))
+        clean_code = code.replace("```python", "").replace("```", "").strip()
 
-# Clean code safely
-clean_code = code.replace("```python", "").replace("```", "").strip()
+        # (Optional) Show GPT-generated code to debug if needed
+        with st.expander("📄 Show GPT-Generated Code"):
+            st.code(clean_code, language="python")
 
-# Display GPT code for transparency
-with st.expander("📄 Show GPT-Generated Code"):
-    st.code(clean_code, language="python")
-
-# Execute with safe context
-exec(clean_code, {"np": np, "pd": pd}, local_vars)
+        # Execute GPT-generated code safely
+        local_vars = {'df': df.copy()}
+        exec(clean_code, {"np": np, "pd": pd}, local_vars)
 
         if 'result' in local_vars:
             result_df = local_vars['result']
