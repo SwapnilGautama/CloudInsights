@@ -89,12 +89,18 @@ user_query = st.text_input("Ask a question like:", "Show revenue and cost breakd
 if user_query:
     try:
         st.markdown("Generating insights...")
-        code = ask_gpt(user_query, df.head(3))
+code = ask_gpt(user_query, df.head(3))
+local_vars = {'df': df.copy()}
 
-        # 👇 Execute GPT-generated code safely
-        local_vars = {'df': df.copy()}
-        clean_code = code.strip().strip("`").replace("python", "").strip()
-        exec(clean_code, {"np": np, "pd": pd}, local_vars)
+# Clean code safely
+clean_code = code.replace("```python", "").replace("```", "").strip()
+
+# Display GPT code for transparency
+with st.expander("📄 Show GPT-Generated Code"):
+    st.code(clean_code, language="python")
+
+# Execute with safe context
+exec(clean_code, {"np": np, "pd": pd}, local_vars)
 
         if 'result' in local_vars:
             result_df = local_vars['result']
