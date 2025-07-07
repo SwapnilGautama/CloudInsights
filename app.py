@@ -33,14 +33,15 @@ Generate a Python pandas code snippet that filters and analyzes the dataset to p
 2. Breakup of revenue by Type (Fixed_Position vs Project)
 3. Breakup of cost between Onshore and Offshore
 
-Return the result as:
+Assign the following variables:
 - result → filtered dataframe
 - summary1 → revenue grouped by Type
 - summary2 → cost split by Onshore and Offshore
 
-Just return the Python pandas code, no explanation.
+Just provide the Python pandas code that does this — no explanations, and no return statements.
 Assume the dataframe is named df.
-"""
+    """
+
     response = openai.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}],
