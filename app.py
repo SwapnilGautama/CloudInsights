@@ -64,6 +64,13 @@ st.set_page_config(page_title="Cloud Insights Chatbot", page_icon="💬")
 st.title("💬 Cloud Insights Chatbot")
 
 df = load_data()
+
+# ✅ Add sidebar listing unique clients
+with st.sidebar:
+    st.markdown("### 🧾 Clients in Dataset")
+    for client in sorted(df["Client"].unique()):
+        st.markdown(f"- {client}")
+
 user_query = st.text_input("Ask a question like:", "Show revenue and cost breakdown for BMW")
 
 if user_query:
@@ -89,27 +96,31 @@ if user_query:
                 "Resources_Total": "sum"
             }).reset_index()
 
-            agg["Revenue ($K)"] = (agg["Revenue"] / 1000).round(1)
-            agg["Cost ($K)"] = (agg["Cost"] / 1000).round(1)
+            # 💲 Format revenue and cost in $M
+            agg["Revenue ($M)"] = (agg["Revenue"] / 1_000_000).round(2)
+            agg["Cost ($M)"] = (agg["Cost"] / 1_000_000).round(2)
             agg.rename(columns={"Resources_Total": "Total Resources"}, inplace=True)
 
             st.subheader("📊 Summary by Type (Aggregated)")
-            st.dataframe(agg[["Type", "Revenue ($K)", "Cost ($K)", "Total Resources"]], use_container_width=True)
+            col1, col2 = st.columns(2)
 
-            # 📈 Combined Revenue (bar) and Cost (line) Chart
-            fig, ax1 = plt.subplots()
-            ax2 = ax1.twinx()
+            with col1:
+                st.dataframe(agg[["Type", "Revenue ($M)", "Cost ($M)", "Total Resources"]], use_container_width=True)
 
-            ax1.bar(agg["Type"], agg["Revenue ($K)"], label="Revenue ($K)", color="skyblue")
-            ax2.plot(agg["Type"], agg["Cost ($K)"], label="Cost ($K)", color="red", marker="o")
+            with col2:
+                fig, ax1 = plt.subplots()
+                ax2 = ax1.twinx()
 
-            ax1.set_ylabel("Revenue ($K)")
-            ax2.set_ylabel("Cost ($K)")
-            ax1.set_title("Revenue and Cost by Type")
-            ax1.legend(loc="upper left")
-            ax2.legend(loc="upper right")
+                ax1.bar(agg["Type"], agg["Revenue ($M)"], label="Revenue ($M)", color="skyblue")
+                ax2.plot(agg["Type"], agg["Cost ($M)"], label="Cost ($M)", color="red", marker="o")
 
-            st.pyplot(fig)
+                ax1.set_ylabel("Revenue ($M)")
+                ax2.set_ylabel("Cost ($M)")
+                ax1.set_title("Revenue and Cost by Type")
+                ax1.legend(loc="upper left")
+                ax2.legend(loc="upper right")
+
+                st.pyplot(fig)
 
     except Exception as e:
         st.error(f"Something went wrong: {e}")
