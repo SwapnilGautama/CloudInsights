@@ -92,7 +92,8 @@ if user_query:
         # 👇 Execute GPT-generated code safely
         local_vars = {'df': df.copy()}
         clean_code = code.strip().strip("`").replace("python", "").strip()
-        exec(clean_code, {}, local_vars)
+        exec(clean_code, {"np": np, "pd": pd}, local_vars)
+
 
         if 'result' in local_vars:
             result_df = local_vars['result']
