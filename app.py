@@ -26,14 +26,16 @@ You are a data analyst. Given a dataset with these columns:
 The user asked: "{user_query}"
 
 Generate a Python pandas code snippet that filters and analyzes the dataset to provide:
-1. Revenue and Cost for the client
+1. Revenue and Cost for the client (if specified — case-insensitive)
 2. Breakup of revenue by Type (Fixed_Position vs Project)
 3. Breakup of cost between Onshore and Offshore
+4. If no client is specified, return total revenue and cost for all data.
 
-Return the result as:
-- result → filtered dataframe
-- summary1 → revenue grouped by Type
-- summary2 → cost split by Onshore and Offshore
+- Make all string filtering (e.g., Client == 'BMW') case-insensitive using .str.lower().
+- Return the result as:
+  - result → filtered dataframe
+  - summary1 → revenue grouped by Type
+  - summary2 → cost split by Onshore and Offshore
 
 Just return the Python pandas code, no explanation.
 Assume the dataframe is named df.
