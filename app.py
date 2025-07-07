@@ -20,10 +20,6 @@ def load_data():
 
 # 🧠 GPT-powered query interpreter
 def ask_gpt(user_query, df_sample):
-    # 🛡️ Fix if df_sample is passed as a tuple
-    if isinstance(df_sample, tuple):
-        df_sample = df_sample[0]
-
     lowered_query = user_query.lower()
     if any(keyword in lowered_query for keyword in ["total", "overall", "aggregate"]):
         prompt = f"""
@@ -96,11 +92,13 @@ if user_query:
         # 👇 Execute GPT-generated code safely
         local_vars = {'df': df.copy()}
         clean_code = code.strip().strip("`").replace("python", "").strip()
+        st.code(clean_code, language="python")  # Show GPT-generated code
         exec(clean_code, {"np": np, "pd": pd}, local_vars)
 
-        if 'result' in local_vars:
-            result_df = local_vars['result']
-
+        result_df = local_vars.get('result')
+        if result_df is None or not isinstance(result_df, pd.DataFrame) or result_df.empty:
+            st.warning("No data returned. The filter might have excluded all rows or GPT output was invalid.")
+        else:
             # ✅ Aggregation block
             if "Type" in result_df.columns:
                 agg = result_df.groupby("Type").agg({
