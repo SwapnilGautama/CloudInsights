@@ -70,29 +70,46 @@ if user_query:
     try:
         st.markdown("Generating insights...")
         code = ask_gpt(user_query, df.head(3))
-        st.code(code, language='python')
 
-                # 👇 Execute GPT-generated code safely
+        # 👇 Execute GPT-generated code safely
         local_vars = {'df': df.copy()}
-
-        # ✨ Strip markdown code block markers before exec
         clean_code = code.strip().strip("`").replace("python", "").strip()
-
         exec(clean_code, {}, local_vars)
 
-        # 🎯 Expecting: result, summary1, summary2
+        # 📋 Full project + fixed data
         if 'result' in local_vars:
+            st.subheader("📋 Project-wise and Fixed Position Data")
             st.dataframe(local_vars['result'], use_container_width=True)
 
-        if 'summary1' in local_vars:
-            st.subheader("🔹 Revenue by Type")
-            st.dataframe(local_vars['summary1'])
-            plot_bar(local_vars['summary1'], "Revenue by Type", "Revenue")
+        # 📊 Aggregated Summary by Type
+        if 'result' in local_vars:
+            agg = local_vars['result'].groupby("Type").agg({
+                "Revenue": "sum",
+                "Cost": "sum",
+                "Resources_Total": "sum"
+            }).reset_index()
 
-        if 'summary2' in local_vars:
-            st.subheader("🔹 Cost Split (Onshore vs Offshore)")
-            st.dataframe(local_vars['summary2'])
-            plot_bar(local_vars['summary2'], "Cost by Location", "Cost")
+            agg["Revenue ($K)"] = (agg["Revenue"] / 1000).round(1)
+            agg["Cost ($K)"] = (agg["Cost"] / 1000).round(1)
+            agg.rename(columns={"Resources_Total": "Total Resources"}, inplace=True)
+
+            st.subheader("📊 Summary by Type (Aggregated)")
+            st.dataframe(agg[["Type", "Revenue ($K)", "Cost ($K)", "Total Resources"]], use_container_width=True)
+
+            # 📈 Combined Revenue (bar) and Cost (line) Chart
+            fig, ax1 = plt.subplots()
+            ax2 = ax1.twinx()
+
+            ax1.bar(agg["Type"], agg["Revenue ($K)"], label="Revenue ($K)", color="skyblue")
+            ax2.plot(agg["Type"], agg["Cost ($K)"], label="Cost ($K)", color="red", marker="o")
+
+            ax1.set_ylabel("Revenue ($K)")
+            ax2.set_ylabel("Cost ($K)")
+            ax1.set_title("Revenue and Cost by Type")
+            ax1.legend(loc="upper left")
+            ax2.legend(loc="upper right")
+
+            st.pyplot(fig)
 
     except Exception as e:
         st.error(f"Something went wrong: {e}")
