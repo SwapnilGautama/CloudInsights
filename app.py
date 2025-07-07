@@ -4,6 +4,7 @@ import openai
 import matplotlib.pyplot as plt
 import io
 import requests
+import numpy as np
 
 # 🔑 Set your OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]  # or replace with your key directly
