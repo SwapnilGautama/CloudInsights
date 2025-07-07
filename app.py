@@ -19,14 +19,37 @@ def load_data():
 
 # 🧠 GPT-powered query interpreter
 def ask_gpt(user_query, df_sample):
-    prompt = f"""
+    lowered_query = user_query.lower()
+
+    if any(word in lowered_query for word in ["total", "overall", "aggregate"]):
+        prompt = f"""
+You are a data analyst. Given a dataset with these columns:
+{', '.join(df_sample.columns)}
+
+The user asked: "{user_query}"
+
+Generate a Python pandas code snippet that analyzes the dataset **without filtering by client**, and provides:
+1. Revenue and Cost overall
+2. Breakup of revenue by Type (Fixed_Position vs Project)
+3. Breakup of cost between Onshore and Offshore
+
+Return the result as:
+- result → full dataframe
+- summary1 → revenue grouped by Type
+- summary2 → cost split by Onshore and Offshore
+
+Just return the Python pandas code, no explanation.
+Assume the dataframe is named df.
+        """
+    else:
+        prompt = f"""
 You are a data analyst. Given a dataset with these columns:
 {', '.join(df_sample.columns)}
 
 The user asked: "{user_query}"
 
 Generate a Python pandas code snippet that filters and analyzes the dataset to provide:
-1. Revenue and Cost for the client
+1. Revenue and Cost for the client (case-insensitive match)
 2. Breakup of revenue by Type (Fixed_Position vs Project)
 3. Breakup of cost between Onshore and Offshore
 
@@ -37,7 +60,8 @@ Return the result as:
 
 Just return the Python pandas code, no explanation.
 Assume the dataframe is named df.
-    """
+Use case-insensitive filtering.
+        """
 
     response = openai.chat.completions.create(
         model="gpt-4",
