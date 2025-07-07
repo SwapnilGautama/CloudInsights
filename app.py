@@ -79,12 +79,6 @@ if user_query:
         clean_code = code.strip().strip("`").replace("python", "").strip()
         exec(clean_code, {}, local_vars)
 
-        # 📋 Full project + fixed data
-        if 'result' in local_vars:
-            st.subheader("📋 Project-wise and Fixed Position Data")
-            st.dataframe(local_vars['result'], use_container_width=True, height=400)
-
-        # 📊 Aggregated Summary by Type
         if 'result' in local_vars:
             agg = local_vars['result'].groupby("Type").agg({
                 "Revenue": "sum",
@@ -92,11 +86,16 @@ if user_query:
                 "Resources_Total": "sum"
             }).reset_index()
 
-            # 💲 Format revenue and cost in $M
             agg["Revenue ($M)"] = (agg["Revenue"] / 1_000_000).round(2)
             agg["Cost ($M)"] = (agg["Cost"] / 1_000_000).round(2)
             agg.rename(columns={"Resources_Total": "Total Resources"}, inplace=True)
 
+            # 🗒️ Summary Text
+            st.subheader("📌 Key Insights Summary")
+            for _, row in agg.iterrows():
+                st.markdown(f"- **The total revenue is ${row['Revenue ($M)']}M and total cost is ${row['Cost ($M)']}M for `{row['Type']}` engagements.**")
+
+            # 📊 Aggregated Summary by Type
             st.subheader("📊 Summary by Type (Aggregated)")
             col1, col2 = st.columns([1.1, 1])
 
@@ -117,6 +116,10 @@ if user_query:
                 ax2.legend(loc="upper right")
 
                 st.pyplot(fig)
+
+            # 📋 Full project + fixed data at bottom
+            st.subheader("📋 Project-wise and Fixed Position Data")
+            st.dataframe(local_vars['result'], use_container_width=True, height=400)
 
     except Exception as e:
         st.error(f"Something went wrong: {e}")
