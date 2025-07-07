@@ -49,14 +49,14 @@ Assume the dataframe is named df.
 
 # 📊 Plot helpers
 def plot_bar(data, title, ylabel):
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(6, 4))
     data.plot(kind="bar", ax=ax)
     ax.set_title(title)
     ax.set_ylabel(ylabel)
     st.pyplot(fig)
 
 # 🚀 Main App
-st.set_page_config(page_title="Cloud Insights Chatbot", page_icon="💬")
+st.set_page_config(page_title="Cloud Insights Chatbot", page_icon="💬", layout="wide")
 st.title("💬 Cloud Insights Chatbot")
 
 df = load_data()
@@ -82,7 +82,7 @@ if user_query:
         # 📋 Full project + fixed data
         if 'result' in local_vars:
             st.subheader("📋 Project-wise and Fixed Position Data")
-            st.dataframe(local_vars['result'], use_container_width=True)
+            st.dataframe(local_vars['result'], use_container_width=True, height=400)
 
         # 📊 Aggregated Summary by Type
         if 'result' in local_vars:
@@ -98,13 +98,13 @@ if user_query:
             agg.rename(columns={"Resources_Total": "Total Resources"}, inplace=True)
 
             st.subheader("📊 Summary by Type (Aggregated)")
-            col1, col2 = st.columns(2)
+            col1, col2 = st.columns([1.1, 1])
 
             with col1:
-                st.dataframe(agg[["Type", "Revenue ($M)", "Cost ($M)", "Total Resources"]], use_container_width=True)
+                st.dataframe(agg[["Type", "Revenue ($M)", "Cost ($M)", "Total Resources"]], use_container_width=True, height=350)
 
             with col2:
-                fig, ax1 = plt.subplots()
+                fig, ax1 = plt.subplots(figsize=(6, 4))
                 ax2 = ax1.twinx()
 
                 ax1.bar(agg["Type"], agg["Revenue ($M)"], label="Revenue ($M)", color="skyblue")
