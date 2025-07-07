@@ -104,46 +104,59 @@ if user_query:
         exec(clean_code, {}, local_vars)
 
         if 'result' in local_vars:
-            agg = local_vars['result'].groupby("Type").agg({
-                "Revenue": "sum",
-                "Cost": "sum",
-                "Resources_Total": "sum"
-            }).reset_index()
+            result_df = local_vars['result']
 
-            agg["Revenue ($M)"] = (agg["Revenue"] / 1_000_000).round(2)
-            agg["Cost ($M)"] = (agg["Cost"] / 1_000_000).round(2)
-            agg.rename(columns={"Resources_Total": "Total Resources"}, inplace=True)
+            if 'Type' in result_df.columns:
+                agg = result_df.groupby("Type").agg({
+                    "Revenue": "sum",
+                    "Cost": "sum",
+                    "Resources_Total": "sum"
+                }).reset_index()
 
-            # 🗒️ Summary Text
-            st.subheader("📌 Key Insights Summary")
-            for _, row in agg.iterrows():
-                st.markdown(f"- **The total revenue is ${row['Revenue ($M)']}M and total cost is ${row['Cost ($M)']}M for `{row['Type']}` engagements.**")
+                agg["Revenue ($M)"] = (agg["Revenue"] / 1_000_000).round(2)
+                agg["Cost ($M)"] = (agg["Cost"] / 1_000_000).round(2)
+                agg.rename(columns={"Resources_Total": "Total Resources"}, inplace=True)
 
-            # 📊 Aggregated Summary by Type
-            st.subheader("📊 Summary by Type (Aggregated)")
-            col1, col2 = st.columns([1.1, 1])
+                # 🗒️ Summary Text
+                st.subheader("📌 Key Insights Summary")
+                for _, row in agg.iterrows():
+                    st.markdown(f"- **The total revenue is ${row['Revenue ($M)']}M and total cost is ${row['Cost ($M)']}M for `{row['Type']}` engagements.**")
 
-            with col1:
-                st.dataframe(agg[["Type", "Revenue ($M)", "Cost ($M)", "Total Resources"]], use_container_width=True, height=350)
+                # 📊 Aggregated Summary by Type
+                st.subheader("📊 Summary by Type (Aggregated)")
+                col1, col2 = st.columns([1.1, 1])
 
-            with col2:
-                fig, ax1 = plt.subplots(figsize=(6, 4))
-                ax2 = ax1.twinx()
+                with col1:
+                    st.dataframe(agg[["Type", "Revenue ($M)", "Cost ($M)", "Total Resources"]], use_container_width=True, height=350)
 
-                ax1.bar(agg["Type"], agg["Revenue ($M)"], label="Revenue ($M)", color="skyblue")
-                ax2.plot(agg["Type"], agg["Cost ($M)"], label="Cost ($M)", color="red", marker="o")
+                with col2:
+                    fig, ax1 = plt.subplots(figsize=(6, 4))
+                    ax2 = ax1.twinx()
 
-                ax1.set_ylabel("Revenue ($M)")
-                ax2.set_ylabel("Cost ($M)")
-                ax1.set_title("Revenue and Cost by Type")
-                ax1.legend(loc="upper left")
-                ax2.legend(loc="upper right")
+                    ax1.bar(agg["Type"], agg["Revenue ($M)"], label="Revenue ($M)", color="skyblue")
+                    ax2.plot(agg["Type"], agg["Cost ($M)"], label="Cost ($M)", color="red", marker="o")
 
-                st.pyplot(fig)
+                    ax1.set_ylabel("Revenue ($M)")
+                    ax2.set_ylabel("Cost ($M)")
+                    ax1.set_title("Revenue and Cost by Type")
+                    ax1.legend(loc="upper left")
+                    ax2.legend(loc="upper right")
+
+                    st.pyplot(fig)
+
+            else:
+                st.subheader("📌 Total Summary")
+                total_rev = result_df["Revenue"].sum() / 1_000_000
+                total_cost = result_df["Cost"].sum() / 1_000_000
+                total_res = result_df["Resources_Total"].sum()
+
+                st.markdown(f"- **Total Revenue:** ${total_rev:.2f}M")
+                st.markdown(f"- **Total Cost:** ${total_cost:.2f}M")
+                st.markdown(f"- **Total Resources:** {int(total_res)}")
 
             # 📋 Full project + fixed data at bottom
             st.subheader("📋 Project-wise and Fixed Position Data")
-            st.dataframe(local_vars['result'], use_container_width=True, height=400)
+            st.dataframe(result_df, use_container_width=True, height=400)
 
     except Exception as e:
         st.error(f"Something went wrong: {e}")
