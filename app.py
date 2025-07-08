@@ -142,18 +142,18 @@ if user_query:
 
             final = pd.concat([summary, total_row], ignore_index=True)
 
-           # ✅ DEBUG: Show column names to debug "Total Resources" error
-           st.write("✅ Columns in DataFrame:", final.columns.tolist())
+            # ✅ DEBUG: Show column names to debug "Total Resources" error
+            st.write("✅ Columns in DataFrame:", final.columns.tolist())
 
-           st.dataframe(final[["Client", "Revenue ($M)", "Cost ($M)", "Total Resources", "Revenue/Resource ($K)", "Cost/Resource ($K)"]], use_container_width=True)
+            st.dataframe(final[["Client", "Revenue ($M)", "Cost ($M)", "Resources_Total", "Revenue/Resource ($K)", "Cost/Resource ($K)"]], use_container_width=True)
 
             # AI Summary
             with st.expander("🧠 AI-Generated Business Summary"):
-                summary_text = generate_summary(final[["Client", "Revenue ($M)", "Cost ($M)", "Total Resources"]])
+                summary_text = generate_summary(final[["Client", "Revenue ($M)", "Cost ($M)", "Resources_Total"]])
                 st.markdown(summary_text)
 
             # PDF Download
-            pdf_bytes = generate_pdf(final[["Client", "Revenue ($M)", "Cost ($M)", "Total Resources", "Revenue/Resource ($K)", "Cost/Resource ($K)"]])
+            pdf_bytes = generate_pdf(final[["Client", "Revenue ($M)", "Cost ($M)", "Resources_Total", "Revenue/Resource ($K)", "Cost/Resource ($K)"]])
             b64_pdf = base64.b64encode(pdf_bytes).decode()
             href = f'<a href="data:application/pdf;base64,{b64_pdf}" download="Client_Report.pdf">📄 Download PDF Report</a>'
             st.markdown(href, unsafe_allow_html=True)
