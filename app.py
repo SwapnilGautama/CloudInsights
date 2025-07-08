@@ -168,17 +168,37 @@ if user_query:
             col2.pyplot(figs[1])
             col3.pyplot(figs[2])
 
-            # △ Monthly Trend Chart
-            st.subheader("📈 Monthly Revenue Trend by Client")
-            trend = df.groupby(["Month", "Client"]).agg({"Revenue": "sum"}).reset_index()
-            pivot = trend.pivot(index="Month", columns="Client", values="Revenue")
+            # 📈 Monthly Revenue Trend by Client
+            st.markdown("### 📊 Monthly Revenue Trend by Client")
 
-            fig, ax = plt.subplots(figsize=(10, 4))
-            pivot.plot(ax=ax)
-            ax.set_title("Revenue by Client (Monthly)")
-            ax.set_ylabel("Revenue ($)")
-            ax.set_xlabel("Month")
-            st.pyplot(fig)
+            monthly_group = df.groupby(["Client", "Month_Parsed"])["Revenue"].sum().reset_index()
+
+            fig, ax = plt.subplots(figsize=(10, 5))
+
+           clients = monthly_group["Client"].unique()
+colors = plt.cm.tab10.colors  # 10 distinct colors
+
+for idx, client in enumerate(clients):
+    client_data = monthly_group[monthly_group["Client"] == client]
+    ax.plot(
+        client_data["Month_Parsed"],
+        client_data["Revenue"],
+        label=client,
+        linewidth=2.5,
+        marker="o",
+        markersize=5,
+        color=colors[idx % len(colors)],
+    )
+
+# 🎨 Styling
+ax.set_title("Revenue by Client (Monthly)", fontsize=14, fontweight="bold", pad=10)
+ax.set_xlabel("Month", fontsize=12)
+ax.set_ylabel("Revenue ($)", fontsize=12)
+ax.grid(True, which="major", linestyle="--", linewidth=0.5, alpha=0.6)
+ax.legend(title="Client", fontsize=9, title_fontsize=10, loc="upper right")
+
+plt.xticks(rotation=45)
+st.pyplot(fig)
 
             # PDF Download
             pdf_bytes = generate_pdf(final[["Client", "Revenue ($M)", "Cost ($M)", "Resources_Total", "Revenue/Resource ($K)", "Cost/Resource ($K)"]])
