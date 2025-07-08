@@ -29,16 +29,17 @@ Generate a Python pandas code snippet that filters and analyzes the dataset to p
 1. Revenue and Cost for the client (if specified — case-insensitive)
 2. Breakup of revenue by Type (Fixed_Position vs Project)
 3. Breakup of cost between Onshore and Offshore
-4. If no client is specified, return total revenue and cost for all data.
+4. If user mentions "total" or "overall", do not filter by any client and return aggregate for all clients.
 
-- Make all string filtering (e.g., Client == 'BMW') case-insensitive using .str.lower().
-- Return the result as:
-  - result → filtered dataframe
-  - summary1 → revenue grouped by Type
-  - summary2 → cost split by Onshore and Offshore
+Rules:
+- Perform case-insensitive checks on Client using .str.lower()
+- If no client is found in the user query OR user uses words like "total" or "overall", do not filter on client
+- Return:
+    result → filtered dataframe
+    summary1 → revenue grouped by Type
+    summary2 → cost split by Onshore vs Offshore
 
-Just return the Python pandas code, no explanation.
-Assume the dataframe is named df.
+Just return Python pandas code only — no explanation. Assume the dataframe is called df.
     """
 
     response = openai.chat.completions.create(
