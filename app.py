@@ -142,7 +142,10 @@ if user_query:
 
             final = pd.concat([summary, total_row], ignore_index=True)
 
-            st.dataframe(final[["Client", "Revenue ($M)", "Cost ($M)", "Total Resources", "Revenue/Resource ($K)", "Cost/Resource ($K)"]], use_container_width=True)
+           # ✅ DEBUG: Show column names to debug "Total Resources" error
+           st.write("✅ Columns in DataFrame:", final.columns.tolist())
+
+           st.dataframe(final[["Client", "Revenue ($M)", "Cost ($M)", "Total Resources", "Revenue/Resource ($K)", "Cost/Resource ($K)"]], use_container_width=True)
 
             # AI Summary
             with st.expander("🧠 AI-Generated Business Summary"):
