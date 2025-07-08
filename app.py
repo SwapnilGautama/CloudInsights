@@ -9,7 +9,7 @@ import requests
 openai.api_key = st.secrets["OPENAI_API_KEY"]  # or replace with your key directly
 
 # 📄 GitHub raw CSV URL
-CSV_URL = https://raw.githubusercontent.com/SwapnilGautama/CloudInsights/main/SoftwareCompany_2025_Data.csv
+CSV_URL = "https://raw.githubusercontent.com/SwapnilGautama/CloudInsights/main/SoftwareCompany_2025_Data.csv"
 
 @st.cache_data
 def load_data():
