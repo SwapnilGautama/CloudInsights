@@ -19,7 +19,7 @@ def load_data():
 
 # 🧠 GPT-powered query interpreter
 def ask_gpt(user_query, df_sample):
-prompt = f"""
+    prompt = f"""
 You are a data analyst. Given a dataset with these columns:
 {', '.join(df_sample.columns)}
 
