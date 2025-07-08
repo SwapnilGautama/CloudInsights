@@ -26,7 +26,7 @@ You are a data analyst. Given a dataset with these columns:
 The user asked: "{user_query.lower()}"
 
 Generate a Python pandas code snippet that filters and analyzes the dataset to provide:
-1. If the user asks for 'total' or 'overall', show revenue and cost across the **entire dataset**.
+1. If the user asks for 'total', 'aggregate' or 'overall', show revenue and cost across the **entire dataset**.
 2. If a client is mentioned, filter by that client (case-insensitive).
 3. Provide:
     - Total revenue and cost
