@@ -6,8 +6,12 @@ import io
 import requests
 from fpdf import FPDF
 import base64
+import re
 
+# 🔑 Set your OpenAI API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
+
+# 📄 GitHub raw CSV URL
 CSV_URL = "https://raw.githubusercontent.com/SwapnilGautama/CloudInsights/main/SoftwareCompany_2025_Data.csv"
 
 @st.cache_data
@@ -16,6 +20,7 @@ def load_data():
     df['Month'] = pd.to_datetime(df['Month'])
     return df
 
+# 🧠 GPT-powered query interpreter
 def ask_gpt(user_query, df_sample):
     prompt = f"""
     You are a data analyst. Given a dataset with these columns:
@@ -37,6 +42,8 @@ def ask_gpt(user_query, df_sample):
         - result → filtered df
         - summary1 → revenue by Type
         - summary2 → cost by Onshore/Offshore
+
+    Just return executable Python code, no explanation.
     """
 
     response = openai.chat.completions.create(
@@ -44,28 +51,18 @@ def ask_gpt(user_query, df_sample):
         messages=[{"role": "user", "content": prompt}],
         temperature=0
     )
+
     return response.choices[0].message.content
 
-def generate_summary(df):
-    prompt = f"""
-    You are a business analyst. Given this client-level summary:
+# 📊 Plot helpers
+def plot_bar(data, title, ylabel):
+    fig, ax = plt.subplots(figsize=(6, 4))
+    data.plot(kind="bar", ax=ax)
+    ax.set_title(title)
+    ax.set_ylabel(ylabel)
+    st.pyplot(fig)
 
-    {df.to_markdown(index=False)}
-
-    Provide a **concise 3-4 point summary**. Focus on:
-    - Clients contributing the most to revenue, cost, and resource totals.
-    - Clients with significantly high or low margins.
-    - Any outliers or trends that stand out.
-    Use clear business language.
-    """
-
-    response = openai.chat.completions.create(
-        model="gpt-4",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.5
-    )
-    return response.choices[0].message.content.strip()
-
+# 📟 PDF Generator
 def generate_pdf(df):
     pdf = FPDF()
     pdf.add_page()
@@ -87,30 +84,35 @@ def generate_pdf(df):
 
     return pdf.output(dest='S').encode('latin1')
 
-def plot_pie(data, title):
-    fig, ax = plt.subplots()
-    ax.pie(data.values, labels=data.index, autopct='%1.1f%%')
-    ax.set_title(title)
-    st.pyplot(fig)
+# 🧠 AI Summary Writer
+def generate_summary(df):
+    prompt = f"""
+    You are a senior business analyst. Given this client-level summary:
 
-def plot_mom_trend(df):
-    trend = df.groupby(['Month', 'Client'])['Revenue'].sum().reset_index()
-    pivot = trend.pivot(index='Month', columns='Client', values='Revenue')
-    fig, ax = plt.subplots(figsize=(10, 5))
-    pivot.plot(ax=ax, marker='o')
-    ax.set_title("📈 Monthly Revenue Trend by Client")
-    ax.set_ylabel("Revenue")
-    ax.set_xlabel("Month")
-    ax.legend(title="Client", bbox_to_anchor=(1.05, 1), loc='upper left')
-    st.pyplot(fig)
+    {df.to_markdown(index=False)}
 
+    Write a **concise executive summary** (3-4 bullet points max) highlighting:
+    - Top clients by revenue, cost, and resources
+    - Notable trends or deviations
+    Avoid verbose or redundant phrases. Be sharp and analytical.
+    """
+
+    response = openai.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.5
+    )
+    return response.choices[0].message.content.strip()
+
+# ✨ Streamlit App
 st.set_page_config(page_title="Cloud Insights Chatbot", page_icon="💬", layout="wide")
 st.title("💬 Cloud Insights Chatbot")
 
 df = load_data()
 
+# Sidebar
 with st.sidebar:
-    st.markdown("### 🧾 Clients in Dataset")
+    st.markdown("### 🗞 Clients in Dataset")
     for client in sorted(df["Client"].unique()):
         st.markdown(f"- {client}")
 
@@ -119,7 +121,7 @@ user_query = st.text_input("Ask a question like:", "Show revenue and cost breakd
 if user_query:
     try:
         if "client report" in user_query.lower():
-            st.subheader("🧠 AI-Generated Business Summary")
+            st.subheader("📊 Client-wise Summary Table")
             summary = df.groupby("Client").agg({
                 "Revenue": "sum",
                 "Cost": "sum",
@@ -143,23 +145,42 @@ if user_query:
             })
 
             final = pd.concat([summary, total_row], ignore_index=True)
-            st.markdown(generate_summary(final[["Client", "Revenue ($M)", "Cost ($M)", "Resources_Total"]]))
 
-            st.subheader("📊 Client-wise Summary Table")
+            # 🧠 AI Summary
+            with st.expander("🧠 AI-Generated Business Summary", expanded=True):
+                st.markdown(generate_summary(final[["Client", "Revenue ($M)", "Cost ($M)", "Resources_Total"]]))
+
             st.dataframe(final[["Client", "Revenue ($M)", "Cost ($M)", "Resources_Total", "Revenue/Resource ($K)", "Cost/Resource ($K)"]], use_container_width=True)
 
-            st.subheader("🥧 Revenue Distribution by Client")
-            plot_pie(summary.set_index("Client")["Revenue ($M)"], "Revenue by Client")
+            # 🔀 Pie Charts
+            pie_cols = ["Revenue", "Cost", "Resources_Total"]
+            labels = final["Client"][:-1]
+            figs = []
+            for metric in pie_cols:
+                fig, ax = plt.subplots()
+                ax.pie(summary[metric], labels=labels, autopct='%1.1f%%')
+                ax.set_title(f"{metric} by Client")
+                figs.append(fig)
 
-            st.subheader("🥧 Cost Distribution by Client")
-            plot_pie(summary.set_index("Client")["Cost ($M)"], "Cost by Client")
+            st.subheader("🔹 Distribution by Client")
+            col1, col2, col3 = st.columns(3)
+            col1.pyplot(figs[0])
+            col2.pyplot(figs[1])
+            col3.pyplot(figs[2])
 
-            st.subheader("🥧 Resource Distribution by Client")
-            plot_pie(summary.set_index("Client")["Resources_Total"], "Resources by Client")
+            # △ Monthly Trend Chart
+            st.subheader("📈 Monthly Revenue Trend by Client")
+            trend = df.groupby(["Month", "Client"]).agg({"Revenue": "sum"}).reset_index()
+            pivot = trend.pivot(index="Month", columns="Client", values="Revenue")
 
-            st.subheader("📈 MoM Revenue Trend by Client")
-            plot_mom_trend(df)
+            fig, ax = plt.subplots(figsize=(10, 4))
+            pivot.plot(ax=ax)
+            ax.set_title("Revenue by Client (Monthly)")
+            ax.set_ylabel("Revenue ($)")
+            ax.set_xlabel("Month")
+            st.pyplot(fig)
 
+            # PDF Download
             pdf_bytes = generate_pdf(final[["Client", "Revenue ($M)", "Cost ($M)", "Resources_Total", "Revenue/Resource ($K)", "Cost/Resource ($K)"]])
             b64_pdf = base64.b64encode(pdf_bytes).decode()
             href = f'<a href="data:application/pdf;base64,{b64_pdf}" download="Client_Report.pdf">📄 Download PDF Report</a>'
@@ -169,7 +190,7 @@ if user_query:
             st.markdown("Generating insights...")
             code = ask_gpt(user_query, df.head(3))
             local_vars = {'df': df.copy()}
-            clean_code = code.strip().strip("`").replace("python", "").strip()
+            clean_code = re.sub(r"```(?:python)?", "", code).strip("`").strip()
             exec(clean_code, {}, local_vars)
 
             if 'result' in local_vars:
