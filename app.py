@@ -65,7 +65,6 @@ def is_full_client_report(query):
 
 # ⚖️ Generate full client report visuals
 def show_full_client_report(df):
-    st.subheader("📊 Full Client-wise Report")
 
     agg_df = df.groupby("Client").agg({
         "Revenue": "sum",
