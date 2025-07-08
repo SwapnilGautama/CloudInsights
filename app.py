@@ -19,28 +19,29 @@ def load_data():
 
 # 🧠 GPT-powered query interpreter
 def ask_gpt(user_query, df_sample):
-    prompt = f"""
+prompt = f"""
 You are a data analyst. Given a dataset with these columns:
 {', '.join(df_sample.columns)}
 
-The user asked: "{user_query}"
+The user asked: "{user_query.lower()}"
 
 Generate a Python pandas code snippet that filters and analyzes the dataset to provide:
-1. Revenue and Cost for the client (if specified — case-insensitive)
-2. Breakup of revenue by Type (Fixed_Position vs Project)
-3. Breakup of cost between Onshore and Offshore
-4. If user mentions "total" or "overall", do not filter by any client and return aggregate for all clients.
+1. If the user asks for 'total' or 'overall', show revenue and cost across the **entire dataset**.
+2. If a client is mentioned, filter by that client (case-insensitive).
+3. Provide:
+    - Total revenue and cost
+    - Revenue by 'Type' (Fixed_Position vs Project)
+    - Cost split by Onshore vs Offshore (Location_Onshore and Location_Offshore)
 
-Rules:
-- Perform case-insensitive checks on Client using .str.lower()
-- If no client is found in the user query OR user uses words like "total" or "overall", do not filter on client
-- Return:
-    result → filtered dataframe
-    summary1 → revenue grouped by Type
-    summary2 → cost split by Onshore vs Offshore
+Assume the dataframe is called df.
+- Use `.str.lower()` for string comparisons
+- Return the following variables:
+    - result → filtered df
+    - summary1 → revenue by Type
+    - summary2 → cost by Onshore/Offshore
 
-Just return Python pandas code only — no explanation. Assume the dataframe is called df.
-    """
+Just return executable Python code, no explanation.
+"""
 
     response = openai.chat.completions.create(
         model="gpt-4",
