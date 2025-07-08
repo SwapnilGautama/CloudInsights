@@ -9,3 +9,4 @@ matplotlib
 python-dateutil
 requests
 fpdf
+tabulate
