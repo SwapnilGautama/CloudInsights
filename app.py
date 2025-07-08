@@ -20,28 +20,28 @@ def load_data():
 # 🧠 GPT-powered query interpreter
 def ask_gpt(user_query, df_sample):
     prompt = f"""
-You are a data analyst. Given a dataset with these columns:
-{', '.join(df_sample.columns)}
+    You are a data analyst. Given a dataset with these columns:
+    {', '.join(df_sample.columns)}
 
-The user asked: "{user_query.lower()}"
+    The user asked: "{user_query.lower()}"
 
-Respond with executable Python pandas code using the dataframe `df`. Do the following:
+    Generate a Python pandas code snippet that filters and analyzes the dataset to provide:
+    1. If the user asks for 'total', 'overall', 'aggregate', or 'company-wide', show revenue and cost across the **entire dataset**.
+    2. If a client is mentioned, filter by that client (case-insensitive).
+    3. Provide:
+        - Total revenue and cost
+        - Revenue by 'Type' (Fixed_Position vs Project)
+        - Cost split by Onshore vs Offshore (Location_Onshore and Location_Offshore)
 
-1. If the user asks for 'total', 'overall', 'aggregate', or 'company-wide', show revenue and cost across the entire dataset.
-2. If a client is mentioned, filter by that client (case-insensitive).
-3. If user asks to compare all clients or generate a report for all clients, then:
-   - Generate a summary table grouped by client with Revenue, Cost, Resources_Total
-   - Also return monthly revenue trend by client for plotting
+    Assume the dataframe is called df.
+    - Use `.str.lower()` for string comparisons
+    - Return the following variables:
+        - result → filtered df
+        - summary1 → revenue by Type
+        - summary2 → cost by Onshore/Offshore
 
-Always return:
-- result: filtered df
-- summary1: revenue by Type
-- summary2: cost by Location
-- client_summary: groupby client table (if relevant)
-- monthly_trend: monthly trend by client (if relevant)
-
-Avoid any return statements. Do not wrap in functions. No explanation.
-"""
+    Just return executable Python code, no explanation.
+    """
 
     response = openai.chat.completions.create(
         model="gpt-4",
@@ -51,12 +51,77 @@ Avoid any return statements. Do not wrap in functions. No explanation.
 
     return response.choices[0].message.content
 
-# 📊 Plot helpers
+# 🕊️ Plot helpers
 def plot_bar(data, title, ylabel):
     fig, ax = plt.subplots(figsize=(6, 4))
     data.plot(kind="bar", ax=ax)
     ax.set_title(title)
     ax.set_ylabel(ylabel)
+    st.pyplot(fig)
+
+# ✨ Detect if user is asking for full client report
+def is_full_client_report(query):
+    return "full client report" in query.lower() or "client-wise summary" in query.lower()
+
+# ⚖️ Generate full client report visuals
+def show_full_client_report(df):
+    st.subheader("📊 Full Client-wise Report")
+
+    agg_df = df.groupby("Client").agg({
+        "Revenue": "sum",
+        "Cost": "sum",
+        "Resources_Total": "sum"
+    }).reset_index()
+
+    agg_df["Revenue ($M)"] = (agg_df["Revenue"] / 1_000_000).round(2)
+    agg_df["Cost ($M)"] = (agg_df["Cost"] / 1_000_000).round(2)
+    agg_df.rename(columns={"Resources_Total": "Total Resources"}, inplace=True)
+
+    # Add total row
+    total_row = pd.DataFrame({
+        "Client": ["Total"],
+        "Revenue ($M)": [agg_df["Revenue ($M)"].sum().round(2)],
+        "Cost ($M)": [agg_df["Cost ($M)"].sum().round(2)],
+        "Total Resources": [agg_df["Total Resources"].sum()]
+    })
+
+    display_df = pd.concat([agg_df[["Client", "Revenue ($M)", "Cost ($M)", "Total Resources"]], total_row], ignore_index=True)
+
+    st.subheader("📊 Client-wise Summary Table")
+    st.dataframe(display_df, use_container_width=True)
+
+    # Pie Charts
+    st.subheader("🞈 Client-wise Breakup (Pie Charts)")
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        fig1, ax1 = plt.subplots()
+        ax1.pie(agg_df["Cost ($M)"], labels=agg_df["Client"], autopct='%1.1f%%')
+        ax1.set_title("Cost by Client")
+        st.pyplot(fig1)
+
+    with col2:
+        fig2, ax2 = plt.subplots()
+        ax2.pie(agg_df["Revenue ($M)"], labels=agg_df["Client"], autopct='%1.1f%%')
+        ax2.set_title("Revenue by Client")
+        st.pyplot(fig2)
+
+    with col3:
+        fig3, ax3 = plt.subplots()
+        ax3.pie(agg_df["Total Resources"], labels=agg_df["Client"], autopct='%1.1f%%')
+        ax3.set_title("Resources by Client")
+        st.pyplot(fig3)
+
+    # MoM Revenue Trend
+    st.subheader("📈 Monthly Revenue by Client")
+    monthly_client = df.groupby(["Month", "Client"])["Revenue"].sum().reset_index()
+    pivot_df = monthly_client.pivot(index="Month", columns="Client", values="Revenue").fillna(0)
+
+    fig, ax = plt.subplots(figsize=(10, 4))
+    pivot_df.plot(ax=ax)
+    ax.set_ylabel("Revenue")
+    ax.set_title("MoM Revenue Trend by Client")
+    ax.legend(title="Client")
     st.pyplot(fig)
 
 # 🚀 Main App
@@ -67,7 +132,7 @@ df = load_data()
 
 # ✅ Add sidebar listing unique clients
 with st.sidebar:
-    st.markdown("### 🗒️ Clients in Dataset")
+    st.markdown("### 🧾 Clients in Dataset")
     for client in sorted(df["Client"].unique()):
         st.markdown(f"- {client}")
 
@@ -76,114 +141,80 @@ user_query = st.text_input("Ask a question like:", "Show revenue and cost breakd
 if user_query:
     try:
         st.markdown("Generating insights...")
-        code = ask_gpt(user_query, df.head(3))
 
-        # 👇 Execute GPT-generated code safely
-        local_vars = {'df': df.copy()}
-        clean_code = code.strip().strip("`").replace("python", "").strip()
-        exec(clean_code, {}, local_vars)
+        if is_full_client_report(user_query):
+            show_full_client_report(df)
+        else:
+            code = ask_gpt(user_query, df.head(3))
 
-        result = local_vars.get("result")
-        summary1 = local_vars.get("summary1")
-        summary2 = local_vars.get("summary2")
-        client_summary = local_vars.get("client_summary")
-        monthly_trend = local_vars.get("monthly_trend")
+            # 👇 Execute GPT-generated code safely
+            local_vars = {'df': df.copy()}
+            clean_code = code.strip().strip("`").replace("python", "").strip()
+            exec(clean_code, {}, local_vars)
 
-        if result is not None:
-            agg = result.groupby("Type").agg({
-                "Revenue": "sum",
-                "Cost": "sum",
-                "Resources_Total": "sum"
-            }).reset_index()
+            if 'result' in local_vars:
+                agg = local_vars['result'].groupby("Type").agg({
+                    "Revenue": "sum",
+                    "Cost": "sum",
+                    "Resources_Total": "sum"
+                }).reset_index()
 
-            agg["Revenue ($M)"] = (agg["Revenue"] / 1_000_000).round(2)
-            agg["Cost ($M)"] = (agg["Cost"] / 1_000_000).round(2)
-            agg.rename(columns={"Resources_Total": "Total Resources"}, inplace=True)
+                agg["Revenue ($M)"] = (agg["Revenue"] / 1_000_000).round(2)
+                agg["Cost ($M)"] = (agg["Cost"] / 1_000_000).round(2)
+                agg.rename(columns={"Resources_Total": "Total Resources"}, inplace=True)
 
-            st.subheader("📜 Key Insights Summary")
-            for _, row in agg.iterrows():
-                st.markdown(f"- **The total revenue is ${row['Revenue ($M)']}M and total cost is ${row['Cost ($M)']}M for `{row['Type']}` engagements.**")
+                # 📒 Summary Text
+                st.subheader("🖌️ Key Insights Summary")
+                for _, row in agg.iterrows():
+                    st.markdown(f"- **The total revenue is ${row['Revenue ($M)']}M and total cost is ${row['Cost ($M)']}M for `{row['Type']}` engagements.**")
 
-            st.subheader("📊 Summary by Type (Aggregated)")
-            col1, col2 = st.columns([1.1, 1])
+                # 📊 Aggregated Summary by Type
+                st.subheader("📊 Summary by Type (Aggregated)")
+                col1, col2 = st.columns([1.1, 1])
 
-            with col1:
-                st.dataframe(agg[["Type", "Revenue ($M)", "Cost ($M)", "Total Resources"]], use_container_width=True, height=350)
+                with col1:
+                    st.dataframe(agg[["Type", "Revenue ($M)", "Cost ($M)", "Total Resources"]], use_container_width=True, height=350)
 
-            with col2:
-                fig, ax1 = plt.subplots(figsize=(6, 4))
+                with col2:
+                    fig, ax1 = plt.subplots(figsize=(6, 4))
+                    ax2 = ax1.twinx()
+
+                    ax1.bar(agg["Type"], agg["Revenue ($M)"], label="Revenue ($M)", color="skyblue")
+                    ax2.plot(agg["Type"], agg["Cost ($M)"], label="Cost ($M)", color="red", marker="o")
+
+                    ax1.set_ylabel("Revenue ($M)")
+                    ax2.set_ylabel("Cost ($M)")
+                    ax1.set_title("Revenue and Cost by Type")
+                    ax1.legend(loc="upper left")
+                    ax2.legend(loc="upper right")
+
+                    st.pyplot(fig)
+
+                # 📈 MoM Revenue vs Cost Chart
+                st.subheader("📈 Monthly Revenue vs Cost Trend")
+                monthly = local_vars['result'].groupby("Month").agg({
+                    "Revenue": "sum",
+                    "Cost": "sum"
+                }).sort_index()
+
+                fig, ax1 = plt.subplots(figsize=(8, 4))
                 ax2 = ax1.twinx()
-                ax1.bar(agg["Type"], agg["Revenue ($M)"], label="Revenue ($M)", color="skyblue")
-                ax2.plot(agg["Type"], agg["Cost ($M)"], label="Cost ($M)", color="red", marker="o")
+
+                ax1.bar(monthly.index.strftime("%b %Y"), monthly["Revenue"] / 1_000_000, label="Revenue ($M)", color="lightgreen")
+                ax2.plot(monthly.index.strftime("%b %Y"), monthly["Cost"] / 1_000_000, label="Cost ($M)", color="orange", marker="o")
+
                 ax1.set_ylabel("Revenue ($M)")
                 ax2.set_ylabel("Cost ($M)")
-                ax1.set_title("Revenue and Cost by Type")
+                ax1.set_title("Monthly Revenue vs Cost")
+                ax1.set_xticklabels(monthly.index.strftime("%b %Y"), rotation=45)
                 ax1.legend(loc="upper left")
                 ax2.legend(loc="upper right")
+
                 st.pyplot(fig)
 
-            st.subheader("📈 Monthly Revenue vs Cost Trend")
-            monthly = result.groupby("Month").agg({"Revenue": "sum", "Cost": "sum"}).sort_index()
-            fig, ax1 = plt.subplots(figsize=(8, 4))
-            ax2 = ax1.twinx()
-            ax1.bar(monthly.index.strftime("%b %Y"), monthly["Revenue"] / 1_000_000, label="Revenue ($M)", color="lightgreen")
-            ax2.plot(monthly.index.strftime("%b %Y"), monthly["Cost"] / 1_000_000, label="Cost ($M)", color="orange", marker="o")
-            ax1.set_ylabel("Revenue ($M)")
-            ax2.set_ylabel("Cost ($M)")
-            ax1.set_title("Monthly Revenue vs Cost")
-            ax1.set_xticklabels(monthly.index.strftime("%b %Y"), rotation=45)
-            ax1.legend(loc="upper left")
-            ax2.legend(loc="upper right")
-            st.pyplot(fig)
-
-            st.subheader("📋 Project-wise and Fixed Position Data")
-            st.dataframe(result, use_container_width=True, height=400)
-
-        # New block: client comparison & reporting
-        if client_summary is not None:
-            st.subheader("📊 Client-wise Summary Table")
-            client_summary["Revenue ($M)"] = (client_summary["Revenue"] / 1_000_000).round(2)
-            client_summary["Cost ($M)"] = (client_summary["Cost"] / 1_000_000).round(2)
-            client_summary = client_summary.rename(columns={"Resources_Total": "Resources"})
-
-            total_row = pd.DataFrame({
-                "Client": ["Total"],
-                "Revenue ($M)": [client_summary["Revenue ($M)"].sum()],
-                "Cost ($M)": [client_summary["Cost ($M)"].sum()],
-                "Resources": [client_summary["Resources"].sum()]
-            })
-            full_table = pd.concat([client_summary[["Client", "Revenue ($M)", "Cost ($M)", "Resources"]], total_row])
-            st.dataframe(full_table, use_container_width=True)
-
-            st.subheader("🎈 Distribution by Client")
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                fig1, ax1 = plt.subplots()
-                ax1.pie(client_summary["Cost ($M)"], labels=client_summary["Client"], autopct='%1.1f%%')
-                ax1.set_title("Cost Distribution")
-                st.pyplot(fig1)
-            with col2:
-                fig2, ax2 = plt.subplots()
-                ax2.pie(client_summary["Revenue ($M)"], labels=client_summary["Client"], autopct='%1.1f%%')
-                ax2.set_title("Revenue Distribution")
-                st.pyplot(fig2)
-            with col3:
-                fig3, ax3 = plt.subplots()
-                ax3.pie(client_summary["Resources"], labels=client_summary["Client"], autopct='%1.1f%%')
-                ax3.set_title("Resources Distribution")
-                st.pyplot(fig3)
-
-        if monthly_trend is not None:
-            st.subheader("📅 Monthly Revenue Trend by Client")
-            pivot = monthly_trend.pivot(index="Month", columns="Client", values="Revenue").fillna(0)
-            fig, ax = plt.subplots(figsize=(10, 5))
-            pivot = pivot / 1_000_000
-            pivot.plot(ax=ax, marker="o")
-            ax.set_title("Monthly Revenue by Client")
-            ax.set_ylabel("Revenue ($M)")
-            ax.set_xlabel("Month")
-            ax.legend(title="Client")
-            st.pyplot(fig)
+                # 📋 Full project + fixed data at bottom
+                st.subheader("📋 Project-wise and Fixed Position Data")
+                st.dataframe(local_vars['result'], use_container_width=True, height=400)
 
     except Exception as e:
         st.error(f"Something went wrong: {e}")
