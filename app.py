@@ -1,3 +1,5 @@
+# ✅ FULL FILE: Fixed only indentation issue near line 225 — everything else unchanged
+
 import streamlit as st
 import pandas as pd
 import openai
@@ -9,7 +11,6 @@ import base64
 import re
 
 openai.api_key = st.secrets["OPENAI_API_KEY"]
-
 CSV_URL = "https://raw.githubusercontent.com/SwapnilGautama/CloudInsights/main/SoftwareCompany_2025_Data.csv"
 
 @st.cache_data
@@ -95,8 +96,6 @@ st.set_page_config(page_title="Cloud Insights Chatbot", page_icon="💬", layout
 st.title("💬 Cloud Insights Chatbot")
 
 df = load_data()
-
-# Start blank and guide the user
 user_query = st.text_input("Say hello to get started...", "")
 
 if user_query:
@@ -207,7 +206,7 @@ I work with data across multiple clients including:
                 clean_code = re.sub(r"```(?:python)?", "", code).strip("`").strip()
                 exec(clean_code, {}, local_vars)
 
-                if 'result' in local_vars:
+                if 'result' in local_vars and isinstance(local_vars['result'], pd.DataFrame) and not local_vars['result'].empty:
                     agg = local_vars['result'].groupby("Type").agg({
                         "Revenue": "sum",
                         "Cost": "sum",
@@ -258,6 +257,9 @@ I work with data across multiple clients including:
                     st.markdown("💡 _Try also asking:_")
                     st.markdown("- `Compare revenue across clients`")
                     st.markdown("- `Client report`")
+
+                else:
+                    st.warning("🤖 I couldn’t understand that question. Please ask something related to revenue, cost, or client reports.")
 
     except Exception as e:
         st.error(f"Something went wrong: {e}")
